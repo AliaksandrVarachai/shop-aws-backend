@@ -19,6 +19,11 @@
     "inlineSourceMap": true,
     "inlineSources": true,
     "experimentalDecorators": true,
+    "baseUrl": "./",
+    "paths": {
+      "/opt/*": ["lib/layers/*"]
+    },
+    "resolveJsonModule": true,
     "strictPropertyInitialization": false,
     "skipLibCheck": true,
     "typeRoots": [

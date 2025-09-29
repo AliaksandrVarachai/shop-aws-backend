@@ -38,8 +38,7 @@ export class ProductsServiceStack extends cdk.Stack {
         });
 
         const getProductsListIntegration = new apigateway.LambdaIntegration(getProductsListLambda, {
-            integrationResponses: [{ statusCode: '200' }],
-            proxy: false,
+            proxy: true,
         });
 
         const getProductByIdIntegration = new apigateway.LambdaIntegration(getProductByIdLambda, {
@@ -50,20 +49,12 @@ export class ProductsServiceStack extends cdk.Stack {
         const getProductByIdResource = getProductsListResource.addResource('{productId}');
 
 
-        getProductsListResource.addMethod('GET', getProductsListIntegration, {
-            methodResponses: [{ statusCode: '200' }],
-        });
-        getProductsListResource.addCorsPreflight({
-            allowOrigins: ['*'], // 'https://your-frontend-url.com'
-            allowMethods: ['GET'],
-        });
+        getProductsListResource.addMethod('GET', getProductsListIntegration);
 
-        getProductByIdResource.addMethod('GET', getProductByIdIntegration, {
-            methodResponses: [{ statusCode: '200' }],
-        });
-        getProductByIdResource.addCorsPreflight({
-            allowOrigins: ['*'], // 'https://your-frontend-url.com'
-            allowMethods: ['GET'],
-        });
+        getProductByIdResource.addMethod('GET', getProductByIdIntegration);
+        // getProductByIdResource.addCorsPreflight({
+        //     allowOrigins: ['*'],
+        //     allowMethods: ['GET,POST,PUT,OPTIONS'],
+        // });
     }
 }

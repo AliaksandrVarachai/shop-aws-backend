@@ -8,6 +8,7 @@ export async function main(event: APIGatewayProxyEvent): Promise<APIGatewayProxy
             statusCode: 400,
             headers: {
                 'Content-Type': 'application/json',
+                'Access-Control-Allow-Origin': '*',
             },
             body: JSON.stringify({
                 error: true,
@@ -22,6 +23,7 @@ export async function main(event: APIGatewayProxyEvent): Promise<APIGatewayProxy
             statusCode: 404,
             headers: {
                 'Content-Type': 'application/json',
+                'Access-Control-Allow-Origin': '*',
             },
             body: JSON.stringify({
                 error: true,
@@ -34,9 +36,8 @@ export async function main(event: APIGatewayProxyEvent): Promise<APIGatewayProxy
         statusCode: 200,
         headers: {
             'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*',
         },
-        body: JSON.stringify({
-            data: product,
-        }),
+        body: JSON.stringify(product),
     };
 }

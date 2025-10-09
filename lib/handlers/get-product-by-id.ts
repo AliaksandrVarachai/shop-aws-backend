@@ -1,43 +1,66 @@
-import mockedProductsList from '/opt/products-list.json';
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from "aws-lambda";
+import {
+    DynamoDBClient,
+    GetItemCommand,
+    GetItemCommandInput,
+    GetItemCommandOutput,
+} from '@aws-sdk/client-dynamodb';
+import { marshall, unmarshall } from '@aws-sdk/util-dynamodb';
+import { tableNames } from '/opt/nodejs/constants';
+import { getErrorAPIGatewayResult, getSuccessAPIGatewayResult } from '/opt/nodejs/response-utils';
+
+const shopDBClient = new DynamoDBClient();
 
 export async function main(event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> {
-    const productId = event.pathParameters?.productId;
-    if (!productId) {
-        return {
-            statusCode: 400,
-            headers: {
-                'Content-Type': 'application/json',
-                'Access-Control-Allow-Origin': '*',
-            },
-            body: JSON.stringify({
-                error: true,
-                errorMessage: `ProductID parameter is required`,
-            }),
-        };
-    }
+    try {
+        const productId = event.pathParameters?.productId;
+        if (!productId) {
+            return getErrorAPIGatewayResult('ProductID parameter is required', 400)
+        }
 
-    const product = mockedProductsList.find(({ id }) => id === productId);
-    if (!product) {
-        return {
-            statusCode: 404,
-            headers: {
-                'Content-Type': 'application/json',
-                'Access-Control-Allow-Origin': '*',
-            },
-            body: JSON.stringify({
-                error: true,
-                errorMessage: `Product with ID '${productId}' not found`,
-            }),
+        const getItemProductInput: GetItemCommandInput = {
+            TableName: tableNames.products,
+            // Key: marshall({ product_id: productId }),
+            Key: marshall({ title: 'title-2' }),
+            ProjectionExpression: 'title, description, price',
         };
-    }
+        const getItemStockInput: GetItemCommandInput = {
+            TableName: tableNames.stock,
+            Key: marshall({ product_id: productId }),
+            ProjectionExpression: 'product_id, #count',
+            ExpressionAttributeNames: {
+                '#count': 'count',
+            },
+        };
+        const getItemProductCommand = new GetItemCommand(getItemProductInput);
+        const getItemStockCommand = new GetItemCommand(getItemStockInput);
 
-    return {
-        statusCode: 200,
-        headers: {
-            'Content-Type': 'application/json',
-            'Access-Control-Allow-Origin': '*',
-        },
-        body: JSON.stringify(product),
-    };
+        console.log('********** getItemProductInput=', getItemProductInput)
+        console.log('********** getItemStockInput=', getItemStockInput)
+
+        const [getItemProductResponse, getItemStockResponse] = await Promise.all([
+            shopDBClient.send<GetItemCommandInput, GetItemCommandOutput>(getItemProductCommand),
+            shopDBClient.send<GetItemCommandInput, GetItemCommandOutput>(getItemStockCommand),
+        ]);
+
+        console.log('********** !!!!!!!')
+
+        if (!getItemProductResponse.Item || !getItemStockResponse.Item) {
+            return getErrorAPIGatewayResult(
+                `Product with ID=${productId} is absent in tables "${tableNames.products}" or "${tableNames.stock}"`,
+                404
+            );
+        }
+        const productItem = {
+            ...unmarshall(getItemProductResponse.Item),
+            ...unmarshall({ count: getItemStockResponse.Item.count }),
+        };
+
+        return getSuccessAPIGatewayResult(productItem, 200);
+    } catch (error) {
+        const tagErrorMessage = 'Error while fetching product by ID from DynamoDB';
+        console.error(tagErrorMessage, error);
+
+        return getErrorAPIGatewayResult(tagErrorMessage, 500);
+    }
 }

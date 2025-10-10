@@ -43,12 +43,16 @@ export async function main(event: APIGatewayProxyEvent): Promise<APIGatewayProxy
                 404
             );
         }
-        const productItem = {
+        const { product_id, ...restProductAttrs } = {
             ...unmarshall(getItemProductResponse.Item),
             ...unmarshall({ count: getItemStockResponse.Item.count }),
         };
+        const responseProductItem = {
+            ...restProductAttrs,
+            id: product_id,
+        };
 
-        return getSuccessAPIGatewayResult(productItem, 200);
+        return getSuccessAPIGatewayResult(responseProductItem, 200);
     } catch (error) {
         const tagErrorMessage = 'Error while fetching product by ID from DynamoDB';
         console.error(tagErrorMessage, error);

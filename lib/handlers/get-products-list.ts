@@ -53,9 +53,10 @@ export async function main(): Promise<APIGatewayProxyResult> {
             acc[stock_product_id] = count;
             return acc;
         }, {})
-        const productsWithCount = productItems.map(productItem => ({
-            ...productItem,
-            count: mapCountById[productItem.product_id] ?? 0,
+        const productsWithCount = productItems.map(({ product_id, ...restProductAttrs }) => ({
+            ...restProductAttrs,
+            id: product_id,
+            count: mapCountById[product_id] ?? 0,
         }));
 
         return getSuccessAPIGatewayResult(productsWithCount, 200);

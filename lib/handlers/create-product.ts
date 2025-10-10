@@ -15,9 +15,18 @@ type CreateProductEvent = APIGatewayProxyEvent & {
 };
 
 export async function main(event: CreateProductEvent): Promise<APIGatewayProxyResult> {
+    if (!event.body) {
+        return getErrorAPIGatewayResult('Request body is empty', 400);
+    }
+    const { title, description, price, count } = JSON.parse(event.body);
+    if (!title || !description || !(Number.isInteger(price) && price >= 0) || !(Number.isInteger(count) && count >= 0)) {
+        return getErrorAPIGatewayResult(
+            `Incorrect fields for product creation ${event.body}`,
+            400
+        );
+    }
     const productUUID = randomUUID();
     const now = Date.now();
-    const { title, description, price, count } = event;
 
     const transactions = {
         TransactItems: [
@@ -51,12 +60,19 @@ export async function main(event: CreateProductEvent): Promise<APIGatewayProxyRe
     try {
         // Stupid TS restriction: throws an error when 2 different "Put" are used in transaction => cast to any
         const command = new TransactWriteItemsCommand(transactions as any);
-        const responseData = await shopDBClient.send(command);
+        await shopDBClient.send(command);
+        const responseBody = {
+            id: productUUID,
+            title,
+            description,
+            price,
+            count,
+        };
 
-        return getSuccessAPIGatewayResult(responseData, 200);
+        return getSuccessAPIGatewayResult(responseBody, 201);
     } catch (error) {
         const tagErrorMessage =
-            `Error when creating product { title: ${title}, description: ${description}, price: ${price}, count: ${count} }`;
+            `Error when creating product. Body=${event.body}`;
         console.error(tagErrorMessage, error);
 
         return getErrorAPIGatewayResult(tagErrorMessage, 500);

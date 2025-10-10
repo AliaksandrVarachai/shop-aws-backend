@@ -2,7 +2,7 @@ export const logLevels = {
     error: 'error',
     warn: 'warn',
     info: 'info',
-};
+} as const;
 
 type LogLevels = keyof typeof logLevels;
 

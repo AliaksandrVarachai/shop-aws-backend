@@ -38,7 +38,7 @@ export async function main(event: CreateProductEvent): Promise<APIGatewayProxyRe
                 Put: {
                     TableName: tableNames.stock,
                     Item: marshall({
-                        product_id: productUUID,
+                        stock_product_id: productUUID,
                         count,
                         createdAt: now,
                         updatedAt: now,

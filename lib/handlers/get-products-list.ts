@@ -29,13 +29,13 @@ export async function main(): Promise<APIGatewayProxyResult> {
             throw Error('No products found in products table');
         }
         const productItems = scanResponse.Items.map(item => unmarshall(item));
-        const productIdKeys = productItems.map(item => marshall({ product_id: item.product_id }));
+        const stockKeys = productItems.map(item => marshall({ stock_product_id: item.product_id }));
 
         const batchGetItemInput: BatchGetItemCommandInput = {
             RequestItems: {
                 [tableNames.stock]: {
-                    Keys: productIdKeys,
-                    ProjectionExpression: 'product_id, #count',
+                    Keys: stockKeys,
+                    ProjectionExpression: 'stock_product_id, #count',
                     ExpressionAttributeNames: {
                         '#count': 'count',
                     },
@@ -49,8 +49,8 @@ export async function main(): Promise<APIGatewayProxyResult> {
             throw Error('No stock information found in stock table');
         }
         const stockCountMap = batchResponses[tableNames.stock].map(item => unmarshall(item));
-        const mapCountById = stockCountMap.reduce((acc, { product_id, count }) => {
-            acc[product_id] = count;
+        const mapCountById = stockCountMap.reduce((acc, { stock_product_id, count }) => {
+            acc[stock_product_id] = count;
             return acc;
         }, {})
         const productsWithCount = productItems.map(productItem => ({

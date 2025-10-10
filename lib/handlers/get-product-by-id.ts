@@ -20,31 +20,23 @@ export async function main(event: APIGatewayProxyEvent): Promise<APIGatewayProxy
 
         const getItemProductInput: GetItemCommandInput = {
             TableName: tableNames.products,
-            // Key: marshall({ product_id: productId }),
-            Key: marshall({ title: 'title-2' }),
-            ProjectionExpression: 'title, description, price',
+            Key: marshall({ product_id: productId }),
+            ProjectionExpression: 'product_id, title, description, price',
         };
         const getItemStockInput: GetItemCommandInput = {
             TableName: tableNames.stock,
-            Key: marshall({ product_id: productId }),
-            ProjectionExpression: 'product_id, #count',
+            Key: marshall({ stock_product_id: productId }),
+            ProjectionExpression: 'stock_product_id, #count',
             ExpressionAttributeNames: {
                 '#count': 'count',
             },
         };
         const getItemProductCommand = new GetItemCommand(getItemProductInput);
         const getItemStockCommand = new GetItemCommand(getItemStockInput);
-
-        console.log('********** getItemProductInput=', getItemProductInput)
-        console.log('********** getItemStockInput=', getItemStockInput)
-
         const [getItemProductResponse, getItemStockResponse] = await Promise.all([
             shopDBClient.send<GetItemCommandInput, GetItemCommandOutput>(getItemProductCommand),
             shopDBClient.send<GetItemCommandInput, GetItemCommandOutput>(getItemStockCommand),
         ]);
-
-        console.log('********** !!!!!!!')
-
         if (!getItemProductResponse.Item || !getItemStockResponse.Item) {
             return getErrorAPIGatewayResult(
                 `Product with ID=${productId} is absent in tables "${tableNames.products}" or "${tableNames.stock}"`,

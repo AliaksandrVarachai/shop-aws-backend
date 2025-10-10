@@ -77,16 +77,12 @@ export class ProductsServiceStack extends cdk.Stack {
                 name: 'product_id',
                 type: dynamodb.AttributeType.STRING
             },
-            sortKey: {
-                name: 'title',
-                type: dynamodb.AttributeType.STRING
-            }
         });
 
         const stockTable = new dynamodb.Table(this, tableNames.stock, {
             tableName: tableNames.stock,
             partitionKey: {
-                name: 'product_id',
+                name: 'stock_product_id',
                 type: dynamodb.AttributeType.STRING
             },
         });

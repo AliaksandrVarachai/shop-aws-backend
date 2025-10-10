@@ -4,6 +4,7 @@ import { DynamoDBClient, TransactWriteItemsCommand } from '@aws-sdk/client-dynam
 import { marshall } from '@aws-sdk/util-dynamodb';
 import { getErrorAPIGatewayResult, getSuccessAPIGatewayResult } from '/opt/nodejs/response-utils';
 import { tableNames } from '/opt/nodejs/constants';
+import { log } from '/opt/nodejs/log-utils';
 
 const shopDBClient = new DynamoDBClient();
 
@@ -15,6 +16,7 @@ type CreateProductEvent = APIGatewayProxyEvent & {
 };
 
 export async function main(event: CreateProductEvent): Promise<APIGatewayProxyResult> {
+    log(`Called with body = "${JSON.stringify(event.body)}"`)
     if (!event.body) {
         return getErrorAPIGatewayResult('Request body is empty', 400);
     }

@@ -1,4 +1,4 @@
-import { APIGatewayProxyEvent, APIGatewayProxyResult } from "aws-lambda";
+import { APIGatewayProxyEvent, APIGatewayProxyResult, Context } from 'aws-lambda';
 import {
     DynamoDBClient,
     GetItemCommand,
@@ -7,11 +7,13 @@ import {
 } from '@aws-sdk/client-dynamodb';
 import { marshall, unmarshall } from '@aws-sdk/util-dynamodb';
 import { tableNames } from '/opt/nodejs/constants';
+import { log } from '/opt/nodejs/log-utils';
 import { getErrorAPIGatewayResult, getSuccessAPIGatewayResult } from '/opt/nodejs/response-utils';
 
 const shopDBClient = new DynamoDBClient();
 
 export async function main(event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> {
+    log(`Called with pathParameters.productId = "${event.pathParameters?.productId}"`)
     try {
         const productId = event.pathParameters?.productId;
         if (!productId) {

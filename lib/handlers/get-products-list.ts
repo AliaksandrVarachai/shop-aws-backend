@@ -1,4 +1,4 @@
-import { APIGatewayProxyResult } from "aws-lambda";
+import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
 import { ScanCommandInput, ScanCommandOutput } from '@aws-sdk/lib-dynamodb';
 import {
     BatchGetItemCommand,

@@ -9,7 +9,8 @@
     "watch": "tsc -w",
     "test": "jest",
     "deploy": "cdk deploy",
-    "cdk": "cdk"
+    "cdk": "cdk",
+    "build-deploy": "npm run build && npm run deploy"
   },
   "devDependencies": {
     "@types/aws-lambda": "^8.10.152",
@@ -22,6 +23,9 @@
     "typescript": "~5.6.3"
   },
   "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.902.0",
+    "@aws-sdk/lib-dynamodb": "^3.902.0",
+    "@aws-sdk/util-dynamodb": "^3.906.0",
     "aws-cdk-lib": "2.214.0",
     "constructs": "^10.0.0"
   }

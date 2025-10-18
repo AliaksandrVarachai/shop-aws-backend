@@ -21,7 +21,7 @@
     "experimentalDecorators": true,
     "baseUrl": "./",
     "paths": {
-      "/opt/*": ["lib/layers/*"]
+      "/opt/nodejs/*": ["lib/layers/shared/nodejs/*"]
     },
     "resolveJsonModule": true,
     "strictPropertyInitialization": false,

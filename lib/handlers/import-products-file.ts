@@ -10,15 +10,18 @@ const s3Client = new S3Client();
 
 // returns a signed URL from the bucket
 export async function main(event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> {
-    log(`Called with pathParameters.filename = "${event.pathParameters?.filename}"`);
+    log(`Called with pathParameters.filename = "${event.queryStringParameters?.filename}"`);
     try {
         const { filename } = event.queryStringParameters ?? {};
         if (!filename) {
             return getErrorAPIGatewayResult('Filename parameter is required', 400);
         }
+        const { ext, name } = path.parse(filename);
+        const uniqueFilename = `${name}-${Date.now()}${ext}`;
+
         const putObjectCommand = new PutObjectCommand({
             Bucket: getEnvVariable('S3_NAME'),
-            Key: path.join(getEnvVariable('S3_UPLOADED_PATH'), filename),
+            Key: path.join(getEnvVariable('S3_UPLOADED_PATH'), uniqueFilename),
             ContentType: 'text/csv',
         });
 
@@ -29,6 +32,7 @@ export async function main(event: APIGatewayProxyEvent): Promise<APIGatewayProxy
             headers: {
                 'Content-Type': 'text/plain',
                 'Access-Control-Allow-Origin': '*',
+                'Access-Control-Allow-Methods': 'GET',
             },
             body: signedUrl,
         };

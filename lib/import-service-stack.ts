@@ -12,13 +12,16 @@ export class ImportServiceStack extends cdk.Stack {
         super(scope, id, props);
 
         const bucketCorsRule: s3.CorsRule = {
-            allowedMethods: [s3.HttpMethods.GET], // TODO:others methods to upload?
+            allowedMethods: [
+                s3.HttpMethods.GET,
+                s3.HttpMethods.PUT,
+            ],
             allowedOrigins: ['*'], // https://my-frontent.com
+            allowedHeaders: ["*"],
         };
 
         const bucket = new s3.Bucket(this, getEnvVariable('S3_NAME'), {
             versioned: false,
-            // blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
             cors: [bucketCorsRule],
             removalPolicy: RemovalPolicy.DESTROY,
         });
@@ -28,13 +31,19 @@ export class ImportServiceStack extends cdk.Stack {
             description: 'Upload Products Service REST API',
         });
 
-        const sharedLayer = new lambda.LayerVersion(this, 'shared-layer', {
+        const sharedLayer = new lambda.LayerVersion(this, 'SharedLayer', {
             compatibleRuntimes: [lambda.Runtime.NODEJS_20_X],
             code: lambda.Code.fromAsset('lib/layers/shared'),
             description: 'Shared code between services',
         });
 
-        const importProductsFileLambda = new lambda.Function(this, 'import-products-file', {
+        const importUtilsLayer = new lambda.LayerVersion(this, 'ImportUtilsLayer', {
+            compatibleRuntimes: [lambda.Runtime.NODEJS_20_X],
+            code: lambda.Code.fromAsset('lib/layers/import-utils'),
+            description: 'Utils for import products',
+        });
+
+        const importProductsFileLambda = new lambda.Function(this, 'ImportProductsFile', {
             runtime: lambda.Runtime.NODEJS_20_X,
             memorySize: 512,
             timeout: cdk.Duration.seconds(5),
@@ -43,16 +52,17 @@ export class ImportServiceStack extends cdk.Stack {
             layers: [sharedLayer],
             environment: {
                 S3_NAME: bucket.bucketName,
+                S3_UPLOADED_PATH: getEnvVariable('S3_UPLOADED_PATH'),
             }
         });
 
-        const importFileParserLambda = new lambda.Function(this, 'import-file-parser', {
+        const importFileParserLambda = new lambda.Function(this, 'ImportFileParser', {
             runtime: lambda.Runtime.NODEJS_20_X,
             memorySize: 512,
             timeout: cdk.Duration.seconds(5),
             handler: 'import-file-parser.main',
             code: lambda.Code.fromAsset('lib/handlers/'),
-            layers: [sharedLayer],
+            layers: [sharedLayer, importUtilsLayer],
             environment: {
                 S3_NAME: getEnvVariable('S3_NAME'),
                 S3_REGION: getEnvVariable('S3_REGION'),
@@ -65,18 +75,18 @@ export class ImportServiceStack extends cdk.Stack {
             proxy: true,
         });
 
-        const getImportProductsFileResource = api.root.addResource('uploaded');
+        const getImportProductsFileResource = api.root.addResource('import');
 
         getImportProductsFileResource.addMethod('GET', importProductsFileIntegration);
 
-        bucket.grantReadWrite(importProductsFileLambda);
+        bucket.grantWrite(importProductsFileLambda);
 
         const importFileParserDestination = new LambdaDestination(importFileParserLambda);
 
-        // bucket.addEventNotification(s3.EventType.OBJECT_CREATED, importFileParserDestination);
-
         bucket.addObjectCreatedNotification(importFileParserDestination);
 
-        // bucket.grantRead(importFileParserLambda);
+        bucket.grantRead(importFileParserLambda);
+        bucket.grantPut(importFileParserLambda);
+        bucket.grantDelete(importFileParserLambda);
     }
 }

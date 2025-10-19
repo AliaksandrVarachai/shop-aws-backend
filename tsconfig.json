@@ -21,6 +21,7 @@
     "experimentalDecorators": true,
     "baseUrl": "./",
     "paths": {
+      "/opt/nodejs/import-utils": ["lib/layers/import-utils/nodejs/import-utils"],
       "/opt/nodejs/*": ["lib/layers/shared/nodejs/*"]
     },
     "resolveJsonModule": true,

@@ -87,3 +87,36 @@ and environment variables were not committed to GitHub
 5. **[Implemented]** Transaction-based creation of product was implemented to ensure consistency between 
 product and stock creation:
   - `/products/create` creates product in two tables with `TransactWriteItemsCommand` function
+
+## Task 5: Integration with S3
+
+**Links:**
+- Integrated FE: https://d2bko0qy6pacnm.cloudfront.net
+- Lambdas:
+    - `/import` GET https://5x2r60bwq4.execute-api.us-east-1.amazonaws.com/prod/import?filename=test.csv
+    - a PUT request to the provided Signed URL can be sent with a [CSV file as body](https://github.com/AliaksandrVarachai/shop-react-redux-cloudfront/blob/main/src/mocks/data.csv)
+- FE PR: https://github.com/AliaksandrVarachai/shop-react-redux-cloudfront/pull/3/files
+- FE Git infrastructure: https://github.com/AliaksandrVarachai/infra
+
+### CDK Stack and S3 Bucket
+
+1. **[Implemented]** `ImportServiceStack` was created and repository structure updated (import-service-stack.ts added)
+2. **[Implemented]** S3 bucket was defined and deployed in `ImportServiceStack` with an 'uploaded' folder
+
+### Lambda Function importProductsFile
+
+1. **[Implemented]** Lambda function `importProductsFile` was created and integrated with API Gateway at GET `/import`
+2. **[Implemented]** Function returned a Signed URL for the CSV file provided as a query parameter
+3. **[Implemented]** `ImportServiceStack` was updated with IAM policies and Frontend was integrated with the import API endpoint
+
+### Lambda Function importFileParser
+
+1. **[Implemented]** Lambda function `importFileParser` was created and configured to trigger on `s3:ObjectCreated` events 
+for objects in the 'uploaded' folder
+2. **[Implemented]** The function used `csv-parser` to parse CSV data and logged each record to CloudWatch
+
+### Enhancements
+
+1. **[Implemented]** Async/await was used in lambda functions (for JS only)
+2. **[NOT Implemented]** `importProductsFile` lambda was covered by unit tests (using aws-sdk-mock for JS)
+3. **[Implemented]** After the stream ended, the file was moved from the 'uploaded' folder to a 'parsed' folder in the same bucket

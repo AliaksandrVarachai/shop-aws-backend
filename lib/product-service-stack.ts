@@ -111,10 +111,12 @@ export class ProductsServiceStack extends cdk.Stack {
         productsTable.grantReadData(getProductsListLambda);
         productsTable.grantReadData(getProductByIdLambda);
         productsTable.grantWriteData(createProductLambda);
+        productsTable.grantWriteData(catalogBatchProcessLambda);
 
         stockTable.grantReadData(getProductsListLambda);
         stockTable.grantReadData(getProductByIdLambda)
         stockTable.grantWriteData(createProductLambda);
+        stockTable.grantWriteData(catalogBatchProcessLambda);
 
         this.catalogItemsQueue = new sqs.Queue(this, getEnvVariable('SQS_NAME'), {});
         const catalogBatchProcessEventSource = new SqsEventSource(this.catalogItemsQueue, {
@@ -126,5 +128,6 @@ export class ProductsServiceStack extends cdk.Stack {
         const emailSubscription = new snsSubscriptions.EmailSubscription(getEnvVariable('EMAIL_SUBSCRIPTION'));
         createProductTopic.addSubscription(emailSubscription);
         catalogBatchProcessLambda.addEnvironment('CREATE_PRODUCT_TOPIC_ARN', createProductTopic.topicArn);
+        createProductTopic.grantPublish(catalogBatchProcessLambda);
     }
 }

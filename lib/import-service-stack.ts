@@ -93,6 +93,8 @@ export class ImportServiceStack extends cdk.Stack {
         bucket.grantRead(importFileParserLambda);
         bucket.grantPut(importFileParserLambda);
         bucket.grantDelete(importFileParserLambda);
+
+        props.catalogItemsQueue.grantSendMessages(importFileParserLambda);
     }
 }
 

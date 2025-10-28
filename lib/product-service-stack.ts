@@ -20,6 +20,11 @@ export class ProductsServiceStack extends cdk.Stack {
         const api = new apigateway.RestApi(this, 'ProductsServiceApi', {
             restApiName: 'Products Service API',
             description: 'Products Service REST API',
+            defaultCorsPreflightOptions: {
+                allowOrigins: ['*'],
+                allowHeaders: ['*'],
+                allowMethods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
+            }
         });
 
         const sharedLayer = new lambda.LayerVersion(this, 'SharedLayer', {

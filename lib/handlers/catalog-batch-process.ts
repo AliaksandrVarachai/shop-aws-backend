@@ -2,11 +2,11 @@ import type { SQSEvent } from 'aws-lambda';
 import * as dynamodb from '@aws-sdk/client-dynamodb';
 import { marshall } from '@aws-sdk/util-dynamodb';
 import * as sns from '@aws-sdk/client-sns';
-import { randomUUID } from 'node:crypto';
 import { ProductWithStock } from '../types/index';
 import { tableNames } from '/opt/nodejs/constants';
 import { PublishCommand } from '@aws-sdk/client-sns';
 import { getEnvVariable } from '/opt/nodejs/get-env-variable';
+import { log } from '/opt/nodejs/log-utils';
 
 const shopDBClient = new dynamodb.DynamoDBClient();
 const snsClient = new sns.SNSClient();
@@ -16,19 +16,19 @@ const isFulfilledPromise = <T>(result: PromiseSettledResult<T>): result is Promi
 
 // polls data from SQS and saves it to DB + SNS
 export async function main(event: SQSEvent): Promise<void> {
+    log(`called with event: ${JSON.stringify(event)}`);
     try {
         const products: ProductWithStock[] = event.Records.map(record => JSON.parse(record.body));
-        const allSettledResults = await Promise.allSettled(products.map(product => {
-            const productUUID = randomUUID();
+        const allSettledResults = await Promise.allSettled(products.map(async (product) => {
             const now = Date.now();
-            const { title, description, price, count } = product;
+            const { product_id, title, description, price, count } = product;
             const transactWriteItemsCommandInput: dynamodb.TransactWriteItemsCommandInput = {
                 TransactItems: [
                     {
                         Put: {
                             TableName: tableNames.products,
                             Item: marshall({
-                                product_id: productUUID,
+                                product_id,
                                 title,
                                 description,
                                 price,
@@ -41,7 +41,7 @@ export async function main(event: SQSEvent): Promise<void> {
                         Put: {
                             TableName: tableNames.stock,
                             Item: marshall({
-                                stock_product_id: productUUID,
+                                stock_product_id: product_id,
                                 count,
                                 createdAt: now,
                                 updatedAt: now,
@@ -51,7 +51,7 @@ export async function main(event: SQSEvent): Promise<void> {
                 ]
             };
             const transactWriteCommand = new dynamodb.TransactWriteItemsCommand(transactWriteItemsCommandInput);
-            return shopDBClient.send(transactWriteCommand);
+            shopDBClient.send(transactWriteCommand);
         }));
 
         for (let i = 0; i < products.length; ++i) {

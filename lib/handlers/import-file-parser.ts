@@ -1,10 +1,11 @@
 import * as lambda from 'aws-lambda';
 import { S3 } from '@aws-sdk/client-s3';
+import * as sqs from '@aws-sdk/client-sqs';
 import { Readable } from 'node:stream';
+import { randomUUID } from 'node:crypto';
 import { csvParser } from '/opt/nodejs/import-utils';
 import { log, logLevels } from '/opt/nodejs/log-utils';
 import { getEnvVariable } from '/opt/nodejs/get-env-variable';
-import * as sqs from '@aws-sdk/client-sqs';
 
 const s3 = new S3();
 const sqsClient = new sqs.SQSClient();
@@ -38,14 +39,21 @@ export async function main(event: lambda.S3Event): Promise<void> {
                 errorHandler(`Error during parsing ${s3ObjectKey}`, error);
             })
             .on('data', async (productWithStock) => {
+                log(`Parsed data ${JSON.stringify(productWithStock, null, 2)}`);
+                const productUUID = randomUUID();
                 const sendMessageInput: sqs.SendMessageCommandInput = {
                     QueueUrl: catalogItemsQueueUrl,
-                    MessageBody: JSON.stringify(productWithStock),
-                    // MessageDeduplicationId: 'uuid'
+                    MessageBody: JSON.stringify({
+                        ...productWithStock,
+                        product_id: productUUID,
+                    }),
+                    MessageGroupId: 'ImportFileParserMessageGroupId',
+                    MessageDeduplicationId: productUUID,
                 };
                 // TODO: replace with SendMessageBatchCommand (up to 10 messages)
                 const sendMessageCommand = new sqs.SendMessageCommand(sendMessageInput);
                 await sqsClient.send(sendMessageCommand);
+                log(`Sent to SQS message: ${JSON.stringify(sendMessageInput, null, 2)}`);
             })
             .on('error', (error) => {
                 errorHandler(`Error during sending data to SQS ${catalogItemsQueueUrl}`, error);
@@ -62,7 +70,7 @@ export async function main(event: lambda.S3Event): Promise<void> {
                     Bucket: s3BucketName,
                     Key: s3ObjectKey,
                 });
-                log(`${s3ObjectKey} is successfully deleted from ${s3ParsedPath}`);
+                log(`${s3ObjectKey} is successfully deleted from ${s3UploadedPath}`);
             })
             .on('error', (error) => {
                 errorHandler(`Error during copying/deleting of ${s3ObjectKey}`, error);

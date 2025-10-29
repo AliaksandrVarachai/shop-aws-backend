@@ -29,6 +29,7 @@ export class ImportServiceStack extends cdk.Stack {
             versioned: false,
             cors: [bucketCorsRule],
             removalPolicy: RemovalPolicy.DESTROY,
+            autoDeleteObjects: true, // not for production!
         });
 
         const api = new apigateway.RestApi(this, 'UploadProductsApi', {

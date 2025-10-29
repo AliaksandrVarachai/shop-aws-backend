@@ -6,10 +6,10 @@ import * as sns from 'aws-cdk-lib/aws-sns';
 import * as snsSubscriptions from 'aws-cdk-lib/aws-sns-subscriptions';
 import * as cdk from 'aws-cdk-lib';
 import * as path from 'path';
+import { SqsEventSource } from 'aws-cdk-lib/aws-lambda-event-sources';
 import { Construct } from 'constructs';
 import { tableNames } from '../lib/layers/shared/nodejs/constants';
 import { getEnvVariable } from '../lib/layers/shared/nodejs/get-env-variable';
-import { SqsEventSource } from 'aws-cdk-lib/aws-lambda-event-sources';
 
 export class ProductsServiceStack extends cdk.Stack {
     public readonly catalogItemsQueue: sqs.Queue;
@@ -98,6 +98,7 @@ export class ProductsServiceStack extends cdk.Stack {
                 name: 'product_id',
                 type: dynamodb.AttributeType.STRING
             },
+            removalPolicy: cdk.RemovalPolicy.DESTROY, // not for production!
         });
 
         const stockTable = new dynamodb.Table(this, tableNames.stock, {
@@ -106,6 +107,7 @@ export class ProductsServiceStack extends cdk.Stack {
                 name: 'stock_product_id',
                 type: dynamodb.AttributeType.STRING
             },
+            removalPolicy: cdk.RemovalPolicy.DESTROY, // not for production!
         });
 
         productsTable.grantReadData(getProductsListLambda);
@@ -118,7 +120,10 @@ export class ProductsServiceStack extends cdk.Stack {
         stockTable.grantWriteData(createProductLambda);
         stockTable.grantWriteData(catalogBatchProcessLambda);
 
-        this.catalogItemsQueue = new sqs.Queue(this, getEnvVariable('SQS_NAME'), {});
+        this.catalogItemsQueue = new sqs.Queue(this, getEnvVariable('SQS_NAME'), {
+            fifo: true,
+            receiveMessageWaitTime: cdk.Duration.seconds(5),
+        });
         const catalogBatchProcessEventSource = new SqsEventSource(this.catalogItemsQueue, {
             batchSize: 5,
         });

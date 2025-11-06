@@ -1,51 +1,72 @@
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as apigateway from "aws-cdk-lib/aws-apigateway";
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
+import * as sqs from 'aws-cdk-lib/aws-sqs';
+import * as sns from 'aws-cdk-lib/aws-sns';
+import * as snsSubscriptions from 'aws-cdk-lib/aws-sns-subscriptions';
 import * as cdk from 'aws-cdk-lib';
 import * as path from 'path';
+import { SqsEventSource } from 'aws-cdk-lib/aws-lambda-event-sources';
 import { Construct } from 'constructs';
 import { tableNames } from '../lib/layers/shared/nodejs/constants';
+import { getEnvVariable } from '../lib/layers/shared/nodejs/get-env-variable';
 
 export class ProductsServiceStack extends cdk.Stack {
+    public readonly catalogItemsQueue: sqs.Queue;
+
     constructor(scope: Construct, id: string, props?: cdk.StackProps) {
         super(scope, id, props);
 
         const api = new apigateway.RestApi(this, 'ProductsServiceApi', {
             restApiName: 'Products Service API',
             description: 'Products Service REST API',
+            defaultCorsPreflightOptions: {
+                allowOrigins: ['*'],
+                allowHeaders: ['*'],
+                allowMethods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
+            }
         });
 
-        const sharedConstantsLayer = new lambda.LayerVersion(this, 'shared-layer', {
+        const sharedLayer = new lambda.LayerVersion(this, 'SharedLayer', {
             compatibleRuntimes: [lambda.Runtime.NODEJS_20_X],
             code: lambda.Code.fromAsset('lib/layers/shared'),
             description: 'Shared code between services',
         });
 
-        const getProductsListLambda = new lambda.Function(this, 'get-products-list', {
+        const getProductsListLambda = new lambda.Function(this, 'GetProductsListLambda', {
             runtime: lambda.Runtime.NODEJS_20_X,
             memorySize: 512,
             timeout: cdk.Duration.seconds(5),
             handler: 'get-products-list.main',
             code: lambda.Code.fromAsset('lib/handlers/'),
-            layers: [sharedConstantsLayer],
+            layers: [sharedLayer],
         });
 
-        const getProductByIdLambda = new lambda.Function(this, 'get-product-by-id', {
+        const getProductByIdLambda = new lambda.Function(this, 'GetProductByIdLambda', {
             runtime: lambda.Runtime.NODEJS_20_X,
             memorySize: 512,
             timeout: cdk.Duration.seconds(5),
             handler: 'get-product-by-id.main',
             code: lambda.Code.fromAsset(path.join('lib/handlers/')),
-            layers: [sharedConstantsLayer],
+            layers: [sharedLayer],
         });
 
-        const createProductLambda = new lambda.Function(this, 'create-product', {
+        const createProductLambda = new lambda.Function(this, 'CreateProductLambda', {
             runtime: lambda.Runtime.NODEJS_20_X,
             memorySize: 512,
             timeout: cdk.Duration.seconds(5),
             handler: 'create-product.main',
             code: lambda.Code.fromAsset(path.join('lib/handlers/')),
-            layers: [sharedConstantsLayer],
+            layers: [sharedLayer],
+        });
+
+        const catalogBatchProcessLambda = new lambda.Function(this, 'CatalogBatchProcessLambda', {
+            runtime: lambda.Runtime.NODEJS_20_X,
+            memorySize: 512,
+            timeout: cdk.Duration.seconds(5),
+            handler: 'catalog-batch-process.main',
+            code: lambda.Code.fromAsset(path.join('lib/handlers/')),
+            layers: [sharedLayer],
         });
 
         const getProductsListIntegration = new apigateway.LambdaIntegration(getProductsListLambda, {
@@ -77,6 +98,7 @@ export class ProductsServiceStack extends cdk.Stack {
                 name: 'product_id',
                 type: dynamodb.AttributeType.STRING
             },
+            removalPolicy: cdk.RemovalPolicy.DESTROY, // not for production!
         });
 
         const stockTable = new dynamodb.Table(this, tableNames.stock, {
@@ -85,14 +107,32 @@ export class ProductsServiceStack extends cdk.Stack {
                 name: 'stock_product_id',
                 type: dynamodb.AttributeType.STRING
             },
+            removalPolicy: cdk.RemovalPolicy.DESTROY, // not for production!
         });
 
         productsTable.grantReadData(getProductsListLambda);
         productsTable.grantReadData(getProductByIdLambda);
         productsTable.grantWriteData(createProductLambda);
+        productsTable.grantWriteData(catalogBatchProcessLambda);
 
         stockTable.grantReadData(getProductsListLambda);
         stockTable.grantReadData(getProductByIdLambda)
         stockTable.grantWriteData(createProductLambda);
+        stockTable.grantWriteData(catalogBatchProcessLambda);
+
+        this.catalogItemsQueue = new sqs.Queue(this, getEnvVariable('SQS_NAME'), {
+            fifo: true,
+            receiveMessageWaitTime: cdk.Duration.seconds(5),
+        });
+        const catalogBatchProcessEventSource = new SqsEventSource(this.catalogItemsQueue, {
+            batchSize: 5,
+        });
+        catalogBatchProcessLambda.addEventSource(catalogBatchProcessEventSource);
+
+        const createProductTopic = new sns.Topic(this, getEnvVariable('SNS_NAME'), {});
+        const emailSubscription = new snsSubscriptions.EmailSubscription(getEnvVariable('EMAIL_SUBSCRIPTION'));
+        createProductTopic.addSubscription(emailSubscription);
+        catalogBatchProcessLambda.addEnvironment('CREATE_PRODUCT_TOPIC_ARN', createProductTopic.topicArn);
+        createProductTopic.grantPublish(catalogBatchProcessLambda);
     }
 }

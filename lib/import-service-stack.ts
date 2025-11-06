@@ -2,14 +2,19 @@ import * as cdk from 'aws-cdk-lib';
 import * as s3 from 'aws-cdk-lib/aws-s3';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as apigateway from 'aws-cdk-lib/aws-apigateway';
+import { Queue } from 'aws-cdk-lib/aws-sqs';
 import { Construct } from 'constructs';
 import { RemovalPolicy } from 'aws-cdk-lib';
 import { LambdaDestination } from 'aws-cdk-lib/aws-s3-notifications';
 import { getEnvVariable } from '../lib/layers/shared/nodejs/get-env-variable';
 
 export class ImportServiceStack extends cdk.Stack {
-    constructor(scope: Construct, id: string, props?: cdk.StackProps) {
+    constructor(scope: Construct, id: string, props?: ImportServiceStackProps) {
         super(scope, id, props);
+
+        if (!props || !props.catalogItemsQueue) {
+            throw Error('catalogItemQueue is not defined');
+        }
 
         const bucketCorsRule: s3.CorsRule = {
             allowedMethods: [
@@ -24,6 +29,7 @@ export class ImportServiceStack extends cdk.Stack {
             versioned: false,
             cors: [bucketCorsRule],
             removalPolicy: RemovalPolicy.DESTROY,
+            autoDeleteObjects: true, // not for production!
         });
 
         const api = new apigateway.RestApi(this, 'UploadProductsApi', {
@@ -65,11 +71,11 @@ export class ImportServiceStack extends cdk.Stack {
             layers: [sharedLayer, importUtilsLayer],
             environment: {
                 S3_NAME: getEnvVariable('S3_NAME'),
-                S3_REGION: getEnvVariable('S3_REGION'),
                 S3_UPLOADED_PATH: getEnvVariable('S3_UPLOADED_PATH'),
                 S3_PARSED_PATH: getEnvVariable('S3_PARSED_PATH'),
+                CATALOG_ITEMS_QUEUE_URL: props.catalogItemsQueue.queueUrl,
             }
-        })
+        });
 
         const importProductsFileIntegration = new apigateway.LambdaIntegration(importProductsFileLambda, {
             proxy: true,
@@ -88,5 +94,11 @@ export class ImportServiceStack extends cdk.Stack {
         bucket.grantRead(importFileParserLambda);
         bucket.grantPut(importFileParserLambda);
         bucket.grantDelete(importFileParserLambda);
+
+        props.catalogItemsQueue.grantSendMessages(importFileParserLambda);
     }
+}
+
+interface ImportServiceStackProps extends cdk.StackProps {
+    catalogItemsQueue: Queue;
 }

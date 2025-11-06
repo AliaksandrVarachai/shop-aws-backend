@@ -120,3 +120,17 @@ for objects in the 'uploaded' folder
 1. **[Implemented]** Async/await was used in lambda functions (for JS only)
 2. **[NOT Implemented]** `importProductsFile` lambda was covered by unit tests (using aws-sdk-mock for JS)
 3. **[Implemented]** After the stream ended, the file was moved from the 'uploaded' folder to a 'parsed' folder in the same bucket
+
+
+## Task 5: SQS & SNS, Async Microservices Communication
+
+**Links:**
+- Integrated FE: https://d2bko0qy6pacnm.cloudfront.net
+- FE PR: https://github.com/AliaksandrVarachai/shop-react-redux-cloudfront/pull/4
+- FE Git infrastructure: https://github.com/AliaksandrVarachai/infra
+- CSV file for tests: https://github.com/AliaksandrVarachai/shop-react-redux-cloudfront/blob/main/src/mocks/data.csv
+
+### NOTE
+
+There is an issue with duplicated S3 notifications. Possible solution https://dev.to/aws-builders/practical-dynamodb-locking-reads-4o4i
+is out of scope of the tutorial project.

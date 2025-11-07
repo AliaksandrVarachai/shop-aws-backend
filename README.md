@@ -122,7 +122,7 @@ for objects in the 'uploaded' folder
 3. **[Implemented]** After the stream ended, the file was moved from the 'uploaded' folder to a 'parsed' folder in the same bucket
 
 
-## Task 5: SQS & SNS, Async Microservices Communication
+## Task 6: SQS & SNS, Async Microservices Communication
 
 **Links:**
 - Integrated FE: https://d2bko0qy6pacnm.cloudfront.net

@@ -81,7 +81,36 @@ export class ImportServiceStack extends cdk.Stack {
             proxy: true,
         });
 
-        const getImportProductsFileResource = api.root.addResource('import');
+        const basicAuthorizerLambda = new cdk.aws_lambda_nodejs.NodejsFunction(this, 'BasicAuthorizerLambda', {
+            runtime: lambda.Runtime.NODEJS_20_X,
+            memorySize: 256,
+            timeout: cdk.Duration.seconds(5),
+            handler: 'basic-authorizer.main',
+            code: lambda.Code.fromAsset('lib/handlers/'),
+            layers: [sharedLayer],
+            environment: {
+                USER_NAME: getEnvVariable('USER_NAME'),
+                USER_PASSWORD: getEnvVariable('USER_PASSWORD'),
+            },
+        });
+
+        const tokenAuthorizer = new apigateway.TokenAuthorizer(this, 'TokenAuthorizer', {
+            handler: basicAuthorizerLambda,
+            resultsCacheTtl: cdk.Duration.seconds(0),
+            validationRegex: '^Base [A-Za-z0-9\+/=]+$'
+        });
+
+        const getImportProductsFileResource = api.root.addResource('import', {
+            defaultMethodOptions: {
+                authorizer: tokenAuthorizer
+            },
+            defaultCorsPreflightOptions: {
+                allowOrigins: ['*'],
+                allowMethods: ['GET'],
+                allowHeaders: ['Authorization'],
+            },
+
+        });
 
         getImportProductsFileResource.addMethod('GET', importProductsFileIntegration);
 

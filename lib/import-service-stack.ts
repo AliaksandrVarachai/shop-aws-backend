@@ -59,6 +59,7 @@ export class ImportServiceStack extends cdk.Stack {
             environment: {
                 S3_NAME: bucket.bucketName,
                 S3_UPLOADED_PATH: getEnvVariable('S3_UPLOADED_PATH'),
+                FRONTEND_URL: getEnvVariable('FRONTEND_URL'),
             }
         });
 
@@ -105,11 +106,33 @@ export class ImportServiceStack extends cdk.Stack {
                 authorizer: tokenAuthorizer
             },
             defaultCorsPreflightOptions: {
-                allowOrigins: ['*'],
+                allowOrigins: [getEnvVariable('FRONTEND_URL')],
                 allowMethods: ['GET'],
                 allowHeaders: ['Authorization'],
+                allowCredentials: true,
             },
+        });
 
+        api.addGatewayResponse('UnauthorizedGatewayUnauthorizedResponse', {
+            type: apigateway.ResponseType.UNAUTHORIZED,
+            statusCode: '401',
+            responseHeaders: {
+                'Access-Control-Allow-Origin': `'${getEnvVariable('FRONTEND_URL')}'`,
+                'Access-Control-Allow-Methods': "'GET'",
+                'Access-Control-Allow-Credentials': "'true'",
+                'Access-Allow-Headers': "'Authorization'"
+            },
+        });
+
+        api.addGatewayResponse('UnauthorizedGatewayAccessDeniedResponse', {
+            type: apigateway.ResponseType.ACCESS_DENIED,
+            statusCode: '403',
+            responseHeaders: {
+                'Access-Control-Allow-Origin': `'${getEnvVariable('FRONTEND_URL')}'`,
+                'Access-Control-Allow-Methods': "'GET'",
+                'Access-Control-Allow-Credentials': "'true'",
+                'Access-Allow-Headers': "'Authorization'"
+            },
         });
 
         getImportProductsFileResource.addMethod('GET', importProductsFileIntegration);

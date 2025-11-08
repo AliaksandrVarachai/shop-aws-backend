@@ -31,8 +31,10 @@ export async function main(event: APIGatewayProxyEvent): Promise<APIGatewayProxy
             statusCode: 200,
             headers: {
                 'Content-Type': 'text/plain',
-                'Access-Control-Allow-Origin': '*',
+                'Access-Control-Allow-Origin': getEnvVariable('FRONTEND_URL'),
                 'Access-Control-Allow-Methods': 'GET',
+                'Access-Control-Allow-Credentials': 'true',
+                'Access-Control-Allow-Headers': 'Authorization'
             },
             body: signedUrl,
         };

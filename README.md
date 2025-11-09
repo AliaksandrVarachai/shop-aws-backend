@@ -134,3 +134,24 @@ for objects in the 'uploaded' folder
 
 There is an issue with duplicated S3 notifications. Possible solution https://dev.to/aws-builders/practical-dynamodb-locking-reads-4o4i
 is out of scope of the tutorial project.
+
+## Task 7: Authorization
+
+- Integrated FE: https://d2bko0qy6pacnm.cloudfront.net
+- FE PR: https://github.com/AliaksandrVarachai/shop-react-redux-cloudfront/pull/5
+- FE Git infrastructure: https://github.com/AliaksandrVarachai/infra
+- CSV file for tests: https://github.com/AliaksandrVarachai/shop-react-redux-cloudfront/blob/main/src/mocks/data.csv
+
+### Test cases
+
+#### Correct token (response 200)
+  - Token: `QWxpYWtzYW5kclZhcmFjaGFpOlRFU1RfUEFTU1dPUkQ=`
+  - Code chunk: `localStorage.setItem('authorization_token', 'QWxpYWtzYW5kclZhcmFjaGFpOlRFU1RfUEFTU1dPUkQ=')`
+
+#### Incorrect token (response 401)
+  - Token: `*`
+  - Code chunk: `localStorage.setItem('authorization_token', '*')`
+
+#### Incorrect password (response 403)
+- Token: `QWxpYWtzYW5kclZhcmFjaGFpOlRFU1Q=`
+- Code chunk: `localStorage.setItem('authorization_token', 'QWxpYWtzYW5kclZhcmFjaGFpOlRFU1Q=')`

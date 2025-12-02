@@ -51,7 +51,8 @@ export async function main(event: SQSEvent): Promise<void> {
                 ]
             };
             const transactWriteCommand = new dynamodb.TransactWriteItemsCommand(transactWriteItemsCommandInput);
-            shopDBClient.send(transactWriteCommand);
+            await shopDBClient.send(transactWriteCommand);
+            log(`Product id=${product_id} title=${title} is added to DB successfully`);
         }));
 
         for (let i = 0; i < products.length; ++i) {
@@ -69,7 +70,8 @@ export async function main(event: SQSEvent): Promise<void> {
                         }
                     }
                 });
-                snsClient.send(publishCommand);
+                await snsClient.send(publishCommand);
+                log(`Notified about successful creation of product "${product.title}"`);
             } else {
                 const { reason } = allSettledResult;
                 const publishCommand = new PublishCommand({
@@ -83,7 +85,8 @@ export async function main(event: SQSEvent): Promise<void> {
                         }
                     },
                 });
-                snsClient.send(publishCommand);
+                await snsClient.send(publishCommand);
+                log(`Notified that creation of product "${product.title}" failed`);
             }
         }
     } catch (error) {

@@ -59,6 +59,7 @@ export class ImportServiceStack extends cdk.Stack {
             environment: {
                 S3_NAME: bucket.bucketName,
                 S3_UPLOADED_PATH: getEnvVariable('S3_UPLOADED_PATH'),
+                FRONTEND_URL: getEnvVariable('FRONTEND_URL'),
             }
         });
 
@@ -81,7 +82,58 @@ export class ImportServiceStack extends cdk.Stack {
             proxy: true,
         });
 
-        const getImportProductsFileResource = api.root.addResource('import');
+        const basicAuthorizerLambda = new cdk.aws_lambda_nodejs.NodejsFunction(this, 'BasicAuthorizerLambda', {
+            runtime: lambda.Runtime.NODEJS_20_X,
+            memorySize: 256,
+            timeout: cdk.Duration.seconds(5),
+            handler: 'basic-authorizer.main',
+            code: lambda.Code.fromAsset('lib/handlers/'),
+            layers: [sharedLayer],
+            environment: {
+                USER_NAME: getEnvVariable('USER_NAME'),
+                USER_PASSWORD: getEnvVariable('USER_PASSWORD'),
+            },
+        });
+
+        const tokenAuthorizer = new apigateway.TokenAuthorizer(this, 'TokenAuthorizer', {
+            handler: basicAuthorizerLambda,
+            resultsCacheTtl: cdk.Duration.seconds(0),
+            validationRegex: '^Base [A-Za-z0-9\+/=]+$'
+        });
+
+        const getImportProductsFileResource = api.root.addResource('import', {
+            defaultMethodOptions: {
+                authorizer: tokenAuthorizer
+            },
+            defaultCorsPreflightOptions: {
+                allowOrigins: [getEnvVariable('FRONTEND_URL')],
+                allowMethods: ['GET'],
+                allowHeaders: ['Authorization'],
+                allowCredentials: true,
+            },
+        });
+
+        api.addGatewayResponse('UnauthorizedGatewayUnauthorizedResponse', {
+            type: apigateway.ResponseType.UNAUTHORIZED,
+            statusCode: '401',
+            responseHeaders: {
+                'Access-Control-Allow-Origin': `'${getEnvVariable('FRONTEND_URL')}'`,
+                'Access-Control-Allow-Methods': "'GET'",
+                'Access-Control-Allow-Credentials': "'true'",
+                'Access-Allow-Headers': "'Authorization'"
+            },
+        });
+
+        api.addGatewayResponse('UnauthorizedGatewayAccessDeniedResponse', {
+            type: apigateway.ResponseType.ACCESS_DENIED,
+            statusCode: '403',
+            responseHeaders: {
+                'Access-Control-Allow-Origin': `'${getEnvVariable('FRONTEND_URL')}'`,
+                'Access-Control-Allow-Methods': "'GET'",
+                'Access-Control-Allow-Credentials': "'true'",
+                'Access-Allow-Headers': "'Authorization'"
+            },
+        });
 
         getImportProductsFileResource.addMethod('GET', importProductsFileIntegration);
 
